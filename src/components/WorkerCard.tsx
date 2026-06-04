@@ -24,9 +24,16 @@ export function WorkerCard({ worker, onDelete }: WorkerCardProps) {
           </div>
           <div>
             <h3 className="font-semibold text-base">{worker.name}</h3>
-            <code className="text-sm text-muted-foreground font-mono">
-              {worker.host}:{worker.port}
-            </code>
+            <div className="flex items-center gap-2">
+              <code className="text-sm text-muted-foreground font-mono">
+                {worker.host}:{worker.port}
+              </code>
+              {worker.version && (
+                <span className="text-[10px] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded font-mono">
+                  v{worker.version}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <Button
