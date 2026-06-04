@@ -501,6 +501,7 @@ function App() {
 
     setWorkers((current) => [...(current || []), newWorker])
     toast.success(`Worker "${workerName}" added (v${version ?? '?'})`)
+    setActiveTab("workers")
     
     setWorkerName("")
     setWorkerHost("")
@@ -551,6 +552,7 @@ function App() {
 
     setTasks((current) => [...(current || []), newTask])
     toast.success(`Task "${taskName}" created`)
+    setActiveTab("tasks")
     
     setTaskName("")
     setTaskDescription("")
@@ -796,6 +798,7 @@ function App() {
       }
       setTemplates(prev => [...(prev || []), newTemplate])
       toast.success(`Template "${templateName}" created`)
+      setActiveTab("templates")
     }
     setTemplateDialogOpen(false)
     resetTemplateForm()
@@ -887,6 +890,7 @@ function App() {
     ))
 
     toast.success(`Task created from template "${tpl.name}"`)
+    setActiveTab("tasks")
 
     // Auto-start if workers available
     const availableWorkers = getAvailableWorkers(workers || [])
