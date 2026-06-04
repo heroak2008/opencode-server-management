@@ -97,6 +97,20 @@ export function healthCheck(
   return request(worker, 'GET', '/global/health', undefined, signal, logCollector)
 }
 
+/** GET /agent — list available agents on the worker */
+export interface AgentInfo {
+  id: string
+  name?: string
+  [key: string]: unknown
+}
+export function listAgents(
+  worker: { host: string; port: number; password?: string },
+  signal?: AbortSignal,
+  logCollector?: ApiLogEntry[],
+): Promise<AgentInfo[]> {
+  return request<AgentInfo[]>(worker, 'GET', '/agent', undefined, signal, logCollector)
+}
+
 /** POST /session — create a new session */
 export function createSession(
   worker: { host: string; port: number; password?: string },
@@ -293,6 +307,21 @@ export async function executeSubtaskOnWorker(
     return { subtaskId: subtask.id, success: false, error: 'Worker health check returned unhealthy', logs: apiLogs }
   }
 
+  // 1.5 Agent discovery — pick the best agent for this subtask
+  let selectedAgent = advancedConfig?.agent as string | undefined ?? 'build'
+  if (mode === 'message') {
+    try {
+      const agents = await listAgents(w, undefined, apiLogs)
+      if (agents.length > 0) {
+        const agentNames = agents.map(a => a.id ?? a.name ?? '').filter(Boolean)
+        // Prefer the desired agent if it's in the list, otherwise use the first available
+        selectedAgent = agentNames.includes(selectedAgent!) ? selectedAgent! : agentNames[0]
+      }
+    } catch {
+      // Agent discovery is best-effort — fall back to default
+    }
+  }
+
   // 2. Create session
   const sessionTitle = mode === 'message'
     ? `[${taskName}] ${subtask.target}`
@@ -313,8 +342,8 @@ export async function executeSubtaskOnWorker(
     let result: any
 
     if (mode === 'message') {
-      // 3a. POST /session/:id/message with agent:'build' + optional advanced config
-      result = await sendMessage(w, sessionId, [{ type: 'text', text: prompt }], undefined, apiLogs, advancedConfig?.agent as string ?? 'build', advancedConfig ?? undefined)
+      // 3a. POST /session/:id/message with selected agent + optional advanced config
+      result = await sendMessage(w, sessionId, [{ type: 'text', text: prompt }], undefined, apiLogs, selectedAgent, advancedConfig ?? undefined)
     } else {
       // 3b. POST /session/:id/shell — run shell command
       result = await executeShell(w, sessionId, prompt, undefined, apiLogs)

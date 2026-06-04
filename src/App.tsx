@@ -15,7 +15,7 @@ import { TaskCard } from "@/components/TaskCard"
 import { Plus, X, CaretRight, HardDrives, ListChecks, ChartLine, Download, Clock, ClockCounterClockwise, Play, Gear, Code, CopySimple } from "@phosphor-icons/react"
 import type { Worker, Task, SubTask, TaskType, TaskStatus, ScheduleMode, Template, TaskRun, PromptTemplate, ChatInputConfig } from "@/types"
 import { validateWorkerConnection, getAvailableWorkers } from "@/lib/task-utils"
-import { healthCheck, executeSubtaskOnWorker, createSession, sendMessage, abortSession, deleteSession } from "@/lib/worker-api"
+import { healthCheck, executeSubtaskOnWorker, createSession, sendMessage, abortSession, deleteSession, listAgents } from "@/lib/worker-api"
 import { resolvePromptTemplate, interpolatePrompt, getBuiltinTemplates, createPromptTemplate, updatePromptTemplateInList, removePromptTemplateFromList, getBuiltinIdForTaskType } from "@/lib/prompt-templates"
 import { toast, Toaster } from "sonner"
 import { v4 as uuidv4 } from "uuid"
@@ -426,7 +426,19 @@ function App() {
       sessionId = session?.id ?? session?.sessionId
       if (!sessionId) return
 
-      const result = await sendMessage(w, sessionId, [{ type: 'text', text: prompt }], undefined, undefined, 'build')
+      // Agent discovery for synthesis
+      let synthesisAgent = 'build'
+      try {
+        const agents = await listAgents(w)
+        if (agents.length > 0) {
+          const names = agents.map(a => a.id ?? a.name ?? '').filter(Boolean)
+          synthesisAgent = names.includes('build') ? 'build' : names[0]
+        }
+      } catch {
+        // best-effort
+      }
+
+      const result = await sendMessage(w, sessionId, [{ type: 'text', text: prompt }], undefined, undefined, synthesisAgent)
 
       // Extract report using the same extractOutput logic
       const parts: any[] = result?.parts ?? result?.message?.parts ?? []
